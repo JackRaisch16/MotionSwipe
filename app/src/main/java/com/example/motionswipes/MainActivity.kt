@@ -1,14 +1,13 @@
 package com.example.motionswipes
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -25,8 +24,19 @@ class MainActivity : AppCompatActivity() {
 
         previewView = findViewById(R.id.previewView)
 
+        findViewById<Button>(R.id.startServiceBtn).setOnClickListener {
+            Log.d("MainActivity", "✅ Start Swipe Detection button clicked")
+            val serviceIntent = Intent(this, CameraForegroundService::class.java)
+            ContextCompat.startForegroundService(this, serviceIntent)
+        }
+
+        findViewById<Button>(R.id.openAccessibilityBtn).setOnClickListener {
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            startActivity(intent)
+        }
+
         if (allPermissionsGranted()) {
-            startCamera()
+            startForegroundCameraService()
         } else {
             ActivityCompat.requestPermissions(
                 this,
@@ -42,33 +52,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
-        cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
-
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(previewView.surfaceProvider)
-            }
-
-            val imageAnalysis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build()
-                .also {
-                    it.setAnalyzer(ContextCompat.getMainExecutor(this), MotionAnalyzer())
-                }
-
-            val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
-
-            try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalysis)
-            } catch (e: Exception) {
-                Log.e("MotionSwipe", "CameraX binding failed", e)
-            }
-
-        }, ContextCompat.getMainExecutor(this))
+    private fun startForegroundCameraService() {
+        Log.d("MainActivity", "✅ Starting foreground camera service automatically")
+        val serviceIntent = Intent(this, CameraForegroundService::class.java)
+        ContextCompat.startForegroundService(this, serviceIntent)
     }
 
     override fun onRequestPermissionsResult(
@@ -76,10 +63,9 @@ class MainActivity : AppCompatActivity() {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == CAMERA_PERMISSION_CODE && allPermissionsGranted()) {
-            startCamera()
-        } else {
-            super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+            startForegroundCameraService()
         }
     }
 }
