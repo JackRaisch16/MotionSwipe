@@ -1,5 +1,6 @@
 package com.example.motionswipes
 
+import android.content.Context
 import android.media.Image
 import android.util.Log
 import androidx.camera.core.ImageAnalysis
@@ -7,18 +8,27 @@ import androidx.camera.core.ImageProxy
 import java.nio.ByteBuffer
 import kotlin.math.abs
 
-class MotionAnalyzer : ImageAnalysis.Analyzer {
+class MotionAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
 
     private var lastFrame: ByteArray? = null
     private var width: Int = 0
     private var height: Int = 0
     private var lastSwipeTime = 0L
-    private val cooldownMillis = 1000L // 1 second between swipe logs
+
+    private val cooldownMillis = 1000L
+    private val minMotionRatio = 10.0
+    private val swipeRatio = 2.0
+    private var smoothedDiff = 0.0
+    private val smoothingFactor = 0.8
 
     override fun analyze(image: ImageProxy) {
         val currentTime = System.currentTimeMillis()
+        Log.d("MotionSwipe", "📸 Frame received")
 
-        val byteArray = imageToByteArray(image.image) ?: return
+        val byteArray = imageToByteArray(image.image) ?: run {
+            image.close()
+            return
+        }
 
         if (width == 0 || height == 0) {
             width = image.width
@@ -27,11 +37,14 @@ class MotionAnalyzer : ImageAnalysis.Analyzer {
 
         lastFrame?.let { prev ->
             val totalDiff = calculateDiff(prev, byteArray)
+            val pixelCount = width * height
+            val diffRatio = totalDiff.toDouble() / pixelCount
 
-            val minMotionToCare = 300_000
-            if (totalDiff < minMotionToCare) {
-                // No meaningful movement — do nothing
+            smoothedDiff = (smoothingFactor * smoothedDiff) + ((1 - smoothingFactor) * diffRatio)
+
+            if (smoothedDiff < minMotionRatio) {
                 image.close()
+                sleepBriefly()
                 return
             }
 
@@ -39,11 +52,13 @@ class MotionAnalyzer : ImageAnalysis.Analyzer {
             val rightDiff = calculateRegionDiff(prev, byteArray, width / 2, width)
 
             if (currentTime - lastSwipeTime > cooldownMillis) {
-                if (leftDiff > rightDiff * 1.5) {
+                if (leftDiff > rightDiff * swipeRatio) {
                     Log.d("MotionSwipe", "👈 Swipe Detected: RIGHT")
+                    triggerSwipe("right")
                     lastSwipeTime = currentTime
-                } else if (rightDiff > leftDiff * 1.5) {
+                } else if (rightDiff > leftDiff * swipeRatio) {
                     Log.d("MotionSwipe", "👉 Swipe Detected: LEFT")
+                    triggerSwipe("left")
                     lastSwipeTime = currentTime
                 } else {
                     Log.d("MotionSwipe", "🔀 Motion detected, but not a swipe")
@@ -53,6 +68,25 @@ class MotionAnalyzer : ImageAnalysis.Analyzer {
 
         lastFrame = byteArray
         image.close()
+        sleepBriefly()
+    }
+
+    private fun sleepBriefly() {
+        try {
+            Thread.sleep(300) // Helps slow down log spam
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun triggerSwipe(direction: String) {
+        val service = SwipeServiceHolder.serviceInstance
+        if (service != null) {
+            Log.d("MotionSwipe", "✅ Sending gesture to accessibility service: $direction")
+            service.performSwipe(leftToRight = direction == "right")
+        } else {
+            Log.w("MotionSwipe", "❌ SwipeAccessibilityService not connected")
+        }
     }
 
     private fun imageToByteArray(image: Image?): ByteArray? {

@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">MotionSwipes</string>
+    <string name="app_name">MotionSwipe</string>
+    <string name="accessibility_service_description">Allows MotionSwipe to perform swipe gestures</string>
 </resources>
