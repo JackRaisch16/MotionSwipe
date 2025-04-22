@@ -17,8 +17,8 @@ class MotionAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
 
     private val cooldownMillis = 1000L
     private val minMotionRatio = 10.0
-    private val swipeRatio = 2.0
-    private var smoothedDiff = 0.0
+    private val swipeRatio = 3.5
+    private var smoothedDiff = 0.2
     private val smoothingFactor = 0.8
 
     override fun analyze(image: ImageProxy) {
@@ -54,11 +54,11 @@ class MotionAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
             if (currentTime - lastSwipeTime > cooldownMillis) {
                 if (leftDiff > rightDiff * swipeRatio) {
                     Log.d("MotionSwipe", "👈 Swipe Detected: RIGHT")
-                    triggerSwipe("right")
-                    lastSwipeTime = currentTime
-                } else if (rightDiff > leftDiff * swipeRatio) {
-                    Log.d("MotionSwipe", "👉 Swipe Detected: LEFT")
                     triggerSwipe("left")
+                    lastSwipeTime = currentTime
+                } else if (rightDiff * swipeRatio > leftDiff) {
+                    Log.d("MotionSwipe", "👉 Swipe Detected: LEFT")
+                    triggerSwipe("right")
                     lastSwipeTime = currentTime
                 } else {
                     Log.d("MotionSwipe", "🔀 Motion detected, but not a swipe")
@@ -83,7 +83,7 @@ class MotionAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
         val service = SwipeServiceHolder.serviceInstance
         if (service != null) {
             Log.d("MotionSwipe", "✅ Sending gesture to accessibility service: $direction")
-            service.performSwipe(leftToRight = direction == "right")
+            service.performSwipe(leftToRight = (direction == "right"))
         } else {
             Log.w("MotionSwipe", "❌ SwipeAccessibilityService not connected")
         }

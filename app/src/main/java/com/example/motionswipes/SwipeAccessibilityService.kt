@@ -20,11 +20,11 @@ class SwipeAccessibilityService : AccessibilityService() {
     fun performSwipe(leftToRight: Boolean) {
         val path = Path()
         if (leftToRight) {
-            path.moveTo(200f, 1000f)
-            path.lineTo(800f, 1000f)
+            path.moveTo(100f, 1000f)
+            path.lineTo(700f, 1000f)
         } else {
-            path.moveTo(800f, 1000f)
-            path.lineTo(200f, 1000f)
+            path.moveTo(700f, 1000f)
+            path.lineTo(100f, 1000f)
         }
 
         val gesture = GestureDescription.Builder()
