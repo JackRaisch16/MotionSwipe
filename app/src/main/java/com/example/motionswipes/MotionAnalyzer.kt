@@ -22,7 +22,7 @@ class MotionAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
     private val smoothingFactor = 0.8
 
     override fun analyze(image: ImageProxy) {
-        val currentTime = System.currentTimeMillis()
+        val currentTime = System.currentTimeMillis() //SENSOR DATA EXTRACTION
         Log.d("MotionSwipe", "📸 Frame received")
 
         val byteArray = imageToByteArray(image.image) ?: run {
@@ -40,7 +40,7 @@ class MotionAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
             val pixelCount = width * height
             val diffRatio = totalDiff.toDouble() / pixelCount
 
-            smoothedDiff = (smoothingFactor * smoothedDiff) + ((1 - smoothingFactor) * diffRatio)
+            smoothedDiff = (smoothingFactor * smoothedDiff) + ((1 - smoothingFactor) * diffRatio) //PREPROCESSING
 
             if (smoothedDiff < minMotionRatio) {
                 image.close()
@@ -48,7 +48,7 @@ class MotionAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
                 return
             }
 
-            val leftDiff = calculateRegionDiff(prev, byteArray, 0, width / 2)
+            val leftDiff = calculateRegionDiff(prev, byteArray, 0, width / 2) //51-64 FEATURE EXTRACTION
             val rightDiff = calculateRegionDiff(prev, byteArray, width / 2, width)
 
             if (currentTime - lastSwipeTime > cooldownMillis) {
@@ -97,11 +97,11 @@ class MotionAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
         return bytes
     }
 
-    private fun calculateDiff(prev: ByteArray, curr: ByteArray): Long {
+    private fun calculateDiff(prev: ByteArray, curr: ByteArray): Long { //CLASSIFICATION
         return prev.zip(curr).sumOf { abs(it.first - it.second).toLong() }
     }
 
-    private fun calculateRegionDiff(
+    private fun calculateRegionDiff( //CLASSIFICATION
         prev: ByteArray,
         curr: ByteArray,
         xStart: Int,
